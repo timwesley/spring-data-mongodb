@@ -22,6 +22,7 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
 
+import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +34,7 @@ import org.springframework.data.geo.Point;
 import org.springframework.data.mongodb.core.User;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import org.springframework.data.mongodb.repository.Address;
+import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.Contact;
 import org.springframework.data.mongodb.repository.Meta;
 import org.springframework.data.mongodb.repository.Person;
@@ -228,6 +230,15 @@ public class MongoQueryMethodUnitTests {
 		assertThat(method.getEntityInformation().getJavaType(), is(typeCompatibleWith(User.class)));
 	}
 
+	@Test // DATAMONGO-2153
+	public void findsAnnotatedAggregation()throws Exception  {
+
+		MongoQueryMethod method = queryMethod(PersonRepository.class, "findByAggregation");
+
+		Assertions.assertThat(method.hasAnnotatedAggregation()).isTrue();
+		Assertions.assertThat(method.getAnnotatedAggregation()).hasSize(1);
+	}
+
 	private MongoQueryMethod queryMethod(Class<?> repository, String name, Class<?>... parameters) throws Exception {
 
 		Method method = repository.getMethod(name, parameters);
@@ -280,6 +291,9 @@ public class MongoQueryMethodUnitTests {
 
 		// DATAMONGO-1266
 		void deleteByUserName(String userName);
+
+		@Aggregation("{'$group': { _id: '$templateId', maxVersion : { $max : '$version'} } }")
+		List<User> findByAggregation();
 	}
 
 	interface SampleRepository extends Repository<Contact, Long> {

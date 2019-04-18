@@ -30,6 +30,7 @@ import org.springframework.data.geo.GeoResults;
 import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentEntity;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentProperty;
+import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.Meta;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.Tailable;
@@ -165,6 +166,15 @@ public class MongoQueryMethod extends QueryMethod {
 		}
 
 		return this.metadata;
+	}
+
+	/**
+	 *
+	 * @return
+	 * @since 2.2
+	 */
+	Class<?> repositoryDomainType() {
+		return getDomainClass();
 	}
 
 	/*
@@ -320,6 +330,39 @@ public class MongoQueryMethod extends QueryMethod {
 
 		return lookupQueryAnnotation().map(Query::sort).orElseThrow(() -> new IllegalStateException(
 				"Expected to find @Query annotation but did not. Make sure to check hasAnnotatedSort() before."));
+	}
+
+	/**
+	 * Returns whether the method has an annotated query.
+	 *
+	 * @return
+	 * @since 2.2
+	 */
+	public boolean hasAnnotatedAggregation() {
+		return findAnnotatedAggregation().isPresent();
+	}
+
+	/**
+	 * Returns the query string declared in a {@link Query} annotation or {@literal null} if neither the annotation found
+	 * nor the attribute was specified.
+	 *
+	 * @return
+	 * @since 2.2
+	 */
+	@Nullable
+	public String[] getAnnotatedAggregation() {
+		return findAnnotatedAggregation().orElse(null);
+	}
+
+	private Optional<String[]> findAnnotatedAggregation() {
+
+		return lookupAggregationAnnotation() //
+				.map(Aggregation::pipeline) //
+				.filter(it -> !ObjectUtils.isEmpty(it));
+	}
+
+	Optional<Aggregation> lookupAggregationAnnotation() {
+		return doFindAnnotation(Aggregation.class);
 	}
 
 	@SuppressWarnings("unchecked")

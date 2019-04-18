@@ -80,23 +80,28 @@ public abstract class AbstractMongoQuery implements RepositoryQuery {
 	@Override
 	public Object execute(Object[] parameters) {
 
-		ConvertingParameterAccessor accessor = new ConvertingParameterAccessor(operations.getConverter(),
+ 		ConvertingParameterAccessor accessor = new ConvertingParameterAccessor(operations.getConverter(),
 				new MongoParametersParameterAccessor(method, parameters));
+
+		ResultProcessor processor = method.getResultProcessor().withDynamicProjection(accessor);
+		Class<?> typeToRead = processor.getReturnedType().getTypeToRead();
+
+		return processor.processResult(doExecute(method, accessor, typeToRead));
+	}
+
+	protected Object doExecute(MongoQueryMethod method, ConvertingParameterAccessor accessor, Class<?> typeToRead) {
+
 		Query query = createQuery(accessor);
 
 		applyQueryMetaAttributesWhenPresent(query);
 		query = applyAnnotatedDefaultSortIfPresent(query);
-
-		ResultProcessor processor = method.getResultProcessor().withDynamicProjection(accessor);
-		Class<?> typeToRead = processor.getReturnedType().getTypeToRead();
 
 		FindWithQuery<?> find = typeToRead == null //
 				? executableFind //
 				: executableFind.as(typeToRead);
 
 		MongoQueryExecution execution = getExecution(accessor, find);
-
-		return processor.processResult(execution.execute(query));
+		return execution.execute(query);
 	}
 
 	private MongoQueryExecution getExecution(ConvertingParameterAccessor accessor, FindWithQuery<?> operation) {
@@ -204,4 +209,5 @@ public abstract class AbstractMongoQuery implements RepositoryQuery {
 	 * @since 2.0.4
 	 */
 	protected abstract boolean isLimiting();
+
 }
